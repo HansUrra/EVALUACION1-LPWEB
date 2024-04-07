@@ -1,4 +1,4 @@
-import { scrypt, randomBytes, randomUUID } from 'node:crypto'
+import { scrypt, randomBytes, randomUUID, createCipheriv } from 'node:crypto'
 
 export async function validarContraseña(contraseña, hashAlmacenado) {
     const [salt, hashGuardado] = hashAlmacenado.split(':');
@@ -19,9 +19,6 @@ async function generarHash(contraseña, salt) {
 
 export function generarBearerToken(username) {
 
-    // Generar una cadena aleatoria para el token
-    const token = randomBytes(32).toString('hex');
-
     const fechaActual = new Date();
     // Combinar los datos custom y el token en un objeto
     const tokenData = {
@@ -41,13 +38,45 @@ export function generarBearerToken(username) {
             ":" + fechaActual.getSeconds().toString().padStart(2, '0')
     };
 
-    // Convertir los bytes en una cadena hexadecimal
-    const tokenHex = token.toString('hex');
+    const iv = randomBytes(12);
+    // Crear un cifrador usando el algoritmo AES
+    const clave = Buffer.from("keykeykeykeykeykeykeykey", 'utf-8');
+    const cifrador = createCipheriv('aes-192-ccm', clave, iv, {authTagLength: 16});
 
-    // Concatenar la cadena JSON con la cadena hexadecimal
-    const tokenCompleto = JSON.stringify(tokenData);
+    // Cifrar la cadena JSON
+    let tokenCifrado = cifrador.update(JSON.stringify(tokenData), 'utf-8', 'hex');
 
-    
+    console.log("token: " + tokenCifrado)
+    return tokenCifrado;
+}
 
-    return tokenCompleto;
+export function validateMiddleware(req, res, next, users) {
+    console.log("validando con middleware")
+    const authHeader = req.headers['x-authorization'];
+
+    let user = "";
+    if (authHeader && authHeader.trim() !== '') {
+        try {
+            // Convertir el string JSON a un objeto JSON
+            const jsonObject = authHeader;
+            user = jsonObject.username;
+        } catch (error) {
+            console.error('Error al analizar el encabezado de autorización JSON:', error.message);
+            return res.status(401).send();
+        }
+    } else {
+        console.log('El encabezado de autorización está vacío o no está definido.');
+        return res.status(401).send();
+    }
+
+    // Verificar si el usuario está en la lista de usuarios
+    const userIndex = users.findIndex((u) => u.username == user)
+
+    if (userIndex == -1) {
+        console.log("error validacion")
+        return res.status(401).send();
+    } else {
+        console.log("validado")
+        next();
+    }
 }

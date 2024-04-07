@@ -2,7 +2,7 @@ import express from 'express'
 import bodyParser from 'body-parser'
 import { scrypt, randomBytes, randomUUID } from 'node:crypto'
 
-import { validarContraseña, generarBearerToken } from './Servicios.js'
+import { validarContraseña, generarBearerToken, validateMiddleware } from './Servicios.js'
 
 const app = express()
 app.use(bodyParser.json());
@@ -13,41 +13,11 @@ const users = [{
 	password: '1b6ce880ac388eb7fcb6bcaf95e20083:341dfbbe86013c940c8e898b437aa82fe575876f2946a2ad744a0c51501c7dfe6d7e5a31c58d2adc7a7dc4b87927594275ca235276accc9f628697a4c00b4e01' // certamen123
 }]
 
-let todos = []
+const todos = []
 
 app.use(express.static('public'))
 
 // Su código debe ir aquí...
-
-function validateMiddleware(req, res, next) {
-    const authHeader = req.headers['x-authorization'];
-    let user = "";
-
-    if (authHeader && authHeader.trim() !== '') {
-        try {
-            // Convertir el string JSON a un objeto JSON
-            const jsonObject = JSON.parse(authHeader);
-            user = jsonObject.username;
-        } catch (error) {
-            console.error('Error al analizar el encabezado de autorización JSON:', error.message);
-            return res.status(401).send();
-        }
-    } else {
-        console.log('El encabezado de autorización está vacío o no está definido.');
-        return res.status(401).send();
-    }
-
-    // Verificar si el usuario está en la lista de usuarios
-    const userIndex = users.findIndex((u) => u.username == user)
-
-    if (userIndex == -1) {
-        console.log("error validacion")
-        return res.status(401).send();
-    } else {
-        console.log("validado")
-        next();
-    }
-}
 
 app.get('/api', (req, res) => {
 	res.contentType('text/plain');
