@@ -22,7 +22,7 @@ app.use(express.static('public'))
 // HOLA MUNDO - ENDPOINT
 app.get('/api', (req, res) => {
 	res.contentType('text/plain');
-	res.status(200).send('Hello World!');
+	return res.status(200).send('Hello World!');
 })
 
 // LOGIN - ENDPOINT
@@ -76,7 +76,7 @@ app.get("/api/todos", validateMiddleware, (req, res)  =>  {
 		})
 	});
 	res.contentType('application/json');
-	res.status(200).send(lista);
+	return res.status(200).send(lista);
 })
 
 // BUSCAR UN TODO - ENDPOINT
@@ -87,7 +87,7 @@ app.get("/api/todos/:id", validateMiddleware, (req, res) => {
 	// TODO EXISTE?
 	const todoIndex = todos.findIndex((t) => t.id == id);
 	if (todoIndex == -1) 
-		res.status(404).send("Item no existe");
+		return res.status(404).send("Item no existe");
 
 
 	const respuesta = {
@@ -96,7 +96,7 @@ app.get("/api/todos/:id", validateMiddleware, (req, res) => {
 		completed: todo[todoIndex].completed
 	}
 	res.contentType('application/json');
-	res.status(200).send(respuesta);
+	return res.status(200).send(respuesta);
 })
 
 // INSERTAR UN TODO - ENDPOINT
@@ -113,9 +113,9 @@ app.post("/api/todos", validateMiddleware, (req, res) => {
 
 		todos.push(todo);
 		res.contentType('application/json');
-		res.status(201).send(todo);
+		return res.status(201).send(todo);
 	} catch (err) {
-		res.status(400);
+		return res.status(400);
 	} 
 })
 
@@ -127,15 +127,15 @@ app.put("/api/todos/:id", validateMiddleware, (req, res) => {
 	const completed = req.body.completed;
 
 	if (!typeof title === 'string')
-		res.status(400).send();
+		return res.status(400).send();
 	if (!typeof completed === 'boolean')
-		res.status(400).send();
+		return res.status(400).send();
 	
 	try {
 
 		const todoIndex = todos.findIndex((todo) => todo.id == id);
 		if (todoIndex == -1)
-			res.status(404).send("El item a modificar no existe");
+			return res.status(404).send("El item a modificar no existe");
 		
 
 		let todoExist = todos[todoIndex];
@@ -148,10 +148,10 @@ app.put("/api/todos/:id", validateMiddleware, (req, res) => {
 		todos[todoIndex] = todo;
 
 		res.contentType('application/json');
-		res.status(200).send(todo);
+		return res.status(200).send(todo);
 
 	} catch (err) {
-		res.status(400).send();
+		return res.status(400).send();
 	} 
 })
 
@@ -164,13 +164,13 @@ app.delete("/api/todos/:id", validateMiddleware, (req, res) => {
 		const todoIndex = todos.findIndex((todo) => todo.id == id);
 
 		if (todoIndex == -1)
-			res.status(404).send("El item a eliminar no existe");
+			return res.status(404).send("El item a eliminar no existe");
 
 		todos.splice(todoIndex, 1);
-		res.status(204).send();
+		return res.status(204).send();
 
 	} catch (err) {
-		res.status(404);
+		return res.status(404);
 	} 
 })
 
