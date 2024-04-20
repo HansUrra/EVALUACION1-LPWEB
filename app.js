@@ -1,11 +1,10 @@
 import express from 'express'
-import bodyParser from 'body-parser'
 import { scrypt, randomBytes, randomUUID } from 'node:crypto'
 
 import { validatePassword, generateBearerToken, validateMiddleware } from './Servicios.js'
 
 const app = express()
-app.use(bodyParser.json());
+app.use(express.json());
 
 const users = [{
 	username: 'admin',
@@ -28,34 +27,30 @@ app.get('/api', (req, res) => {
 // LOGIN - ENDPOINT
 app.post('/api/login', async (req, res)  => {
 
-    const userInput = req.body.username;
-    const pwInput = req.body.password;
+	const { username, password } = req.body;
 
-    if (userInput === undefined || userInput === "")
+    if (username === undefined || username === "" || typeof username !== "string")
         return res.status(400).send("Ingrese un usuario válido");
-    if (pwInput === undefined || pwInput === "") 
+    if (password === undefined || password === "" || typeof password !== "string") 
         return res.status(400).send("Ingrese una contraseña válida");
 
 	//USUARIO EXISTE?
-    const userIndex = users.findIndex((user) => user.username === userInput);
-    if (userIndex === -1) {
+    const user = users.find((user) => user.username === username);
+    if (user === null) {
         return res.status(401).send("Usuario o contraseña Incorrectos");
     }
 
     try {
-        const isValidCredentials = await validatePassword(pwInput, users[userIndex].password);
+        const isValidCredentials = await validatePassword(password, user.password);
         if (isValidCredentials == false) {
             return res.status(401).send("Usuario o contraseña Incorrectos");
         }
 
-        const resp = { 
-            username: users[userIndex].username, 
-            name: users[userIndex].name,
-            token: generateBearerToken(users[userIndex].username)
-        };
-
-		res.contentType('application/json');
-        return res.status(200).send(resp);
+        res.send({ 
+            username: user.username, 
+            name: user.name,
+            token: generateBearerToken(user.username)
+        });
     } catch (err) {
         console.error(err);
         return res.status(500).send("Error interno del servidor");
@@ -64,19 +59,8 @@ app.post('/api/login', async (req, res)  => {
 
 // LISTAR TODOS - ENDPOINT
 app.get("/api/todos", validateMiddleware, (req, res)  =>  {
-	
-	let lista = []
-
-	todos.forEach(element => {
-
-		lista.push({
-			id: element.id,
-			title: element.title,
-			completed: element.completed
-		})
-	});
 	res.contentType('application/json');
-	return res.status(200).send(lista);
+	return res.status(200).send(todos);
 })
 
 // BUSCAR UN TODO - ENDPOINT
@@ -85,25 +69,21 @@ app.get("/api/todos/:id", validateMiddleware, (req, res) => {
 	const id = req.params.id;
 
 	// TODO EXISTE?
-	const todoIndex = todos.findIndex((t) => t.id == id);
-	if (todoIndex == -1) 
-		return res.status(404).send("Item no existe");
+	const todo = todos.find((t) => t.id == id);
+	if (todo == null) 
+		return res.status(404).send("Item no se encuentra");
 
-
-	const respuesta = {
-		id: todo[todoIndex].id,
-		title: todo[todoIndex].title,
-		completed: todo[todoIndex].completed
-	}
-	res.contentType('application/json');
-	return res.status(200).send(respuesta);
+	return res.send(todo);
 })
 
 // INSERTAR UN TODO - ENDPOINT
 app.post("/api/todos", validateMiddleware, (req, res) => {
-	
+	const { title } = req.body;
+
 	try {
-		const title = req.body.title;
+
+		if (typeof title !== "string")
+			return res.status(400).send("Titulo no valido");
 
 		const todo = {
 			id: randomUUID().toString(),
@@ -112,10 +92,9 @@ app.post("/api/todos", validateMiddleware, (req, res) => {
 		}
 
 		todos.push(todo);
-		res.contentType('application/json');
 		return res.status(201).send(todo);
 	} catch (err) {
-		return res.status(400);
+		return res.status(400).send(err);
 	} 
 })
 
@@ -123,32 +102,26 @@ app.post("/api/todos", validateMiddleware, (req, res) => {
 app.put("/api/todos/:id", validateMiddleware, (req, res) => {
 
 	const id = req.params.id;
-	const title = req.body.title;
-	const completed = req.body.completed;
+	const { title, completed } = req.body;
 
 	if (!typeof title === 'string')
-		return res.status(400).send();
+		return res.status(400).send("entrada no valida");
 	if (!typeof completed === 'boolean')
-		return res.status(400).send();
+		return res.status(400).send("entrada no valida");
 	
 	try {
 
-		const todoIndex = todos.findIndex((todo) => todo.id == id);
-		if (todoIndex == -1)
+		const todoFind = todos.find((todo) => todo.id == id);
+		if (todoFind == null)
 			return res.status(404).send("El item a modificar no existe");
-		
 
-		let todoExist = todos[todoIndex];
-		const todo = {
-			id: id,
-			title: title ? title : todoExist.title,
-			completed: completed ? completed : todoExist.completed
-		}
-	
-		todos[todoIndex] = todo;
+			console.log("title:" + title + " completed: " + completed)
+		if (title !== undefined)
+			todoFind.title = title;
+		if (completed !== undefined)
+			todoFind.completed = completed
 
-		res.contentType('application/json');
-		return res.status(200).send(todo);
+		return res.status(200).send(todoFind);
 
 	} catch (err) {
 		return res.status(400).send();
@@ -157,11 +130,8 @@ app.put("/api/todos/:id", validateMiddleware, (req, res) => {
 
 // ELIMINAR UN TODO - ENDPOINT
 app.delete("/api/todos/:id", validateMiddleware, (req, res) => {
-	const id = req.params.id;
-
 	try {
-		const todosArray = todos;
-		const todoIndex = todos.findIndex((todo) => todo.id == id);
+		const todoIndex = todos.findIndex((todo) => todo.id == req.params.id);
 
 		if (todoIndex == -1)
 			return res.status(404).send("El item a eliminar no existe");
